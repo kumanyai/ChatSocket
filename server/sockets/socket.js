@@ -16,27 +16,37 @@ io.on('connection', (client) => {
 
         client.join(data.sala);
 
-        let personas = usuarios.agregarPersona(client.id, data.nombre, data.sala); //El id lo sacamos del client.id
-
+        usuarios.agregarPersona(client.id, data.nombre, data.sala);
         client.broadcast.to(data.sala).emit('listaPersona', usuarios.getPersonasPorSala(data.sala));
+        client.broadcast.to(data.sala).emit('crearMensaje', crearMensaje('Administrador', `${ data.nombre } se unió`));
 
-        callback(personas);
+        callback(usuarios.getPersonasPorSala(data.sala));
 
     });
 
-    client.on('crearMensaje', (data) => {
+    client.on('crearMensaje', (data, callback) => {
 
         let persona = usuarios.getPersona(client.id);
+        
+        try{
+            let mensaje = crearMensaje(persona.nombre, data.mensaje);
+            client.broadcast.to(persona.sala).emit('crearMensaje', mensaje);
 
-       let mensaje = crearMensaje(persona.nombre, data.mensaje);
-       client.broadcast.to(persona.sala).emit('crearMensaje', mensaje)
+            callback(mensaje);
+        }catch (e) {
+            
+        }
+        
     });
 
     client.on('disconnect', () => {
-       let personaBorrada = usuarios.borrarPersona(client.id);
+        let personaBorrada = usuarios.borrarPersona(client.id);
+        try {
+            client.broadcast.to(personaBorrada.sala).emit('crearMensaje', crearMensaje('Administrador', `${personaBorrada.nombre} Salio`));
+            client.broadcast.to(personaBorrada.sala).emit('listaPersona', usuarios.getPersonasPorSala(personaBorrada.sala));
+        }catch (e) {
 
-       client.broadcast.to(personaBorrada.sala).emit('crearMensaje', crearMensaje('Administrador', `${personaBorrada.nombre} Salio`));
-       client.broadcast.to(personaBorrada.sala).emit('listaPersona', usuarios.getPersonasPorSala(personaBorrada.sala));
+        }
 
     });
 
